@@ -48,27 +48,39 @@ const customSkinShape = z.object({
 });
 
 function getWeaponOptions() {
-  return CS2Economy.itemsAsArray
-    .filter(
-      (item) =>
-        (item.type === CS2ItemType.Weapon || item.type === CS2ItemType.Melee) &&
-        item.base === true &&
-        item.def !== undefined
-    )
-    .map(
-      (item) =>
-        ({
-          def: item.def as number,
-          id: item.id,
-          label: item.name
-        }) satisfies WeaponOption
-    )
+  const options = new Map<number, WeaponOption & { isBase: boolean }>();
+
+  for (const item of CS2Economy.itemsAsArray) {
+    if (
+      (item.type !== CS2ItemType.Weapon && item.type !== CS2ItemType.Melee) ||
+      item.def === undefined
+    ) {
+      continue;
+    }
+
+    const def = item.def;
+    const current = options.get(def);
+    const label = item.name.split(" | ")[0] ?? item.name;
+
+    if (current === undefined || (!current.isBase && item.base === true)) {
+      options.set(def, {
+        def,
+        id: item.id,
+        isBase: item.base === true,
+        label
+      });
+    }
+  }
+
+  return Array.from(options.values())
+    .map(({ isBase, ...option }) => option)
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 function resolveItemIdFromDefAndPaintIndex(
   weaponDef: number,
   paintIndex: number,
+  weaponOptions: WeaponOption[]
 ) {
   const exactMatch = CS2Economy.itemsAsArray.find(
     (item) =>
@@ -77,7 +89,12 @@ function resolveItemIdFromDefAndPaintIndex(
       item.index === paintIndex
   );
 
-  return exactMatch?.id;
+  if (exactMatch !== undefined) {
+    return exactMatch.id;
+  }
+
+  const fallbackWeapon = weaponOptions.find((weapon) => weapon.def === weaponDef);
+  return fallbackWeapon?.id;
 }
 
 export const meta = getMetaTitle();
@@ -102,21 +119,28 @@ export async function action({ request }: Route.ActionArgs) {
     });
   }
 
+  const weaponOptions = getWeaponOptions();
   const { weaponDef, paintIndex, seed, wear, statTrak, nameTag } = result.data;
 
-  const id = resolveItemIdFromDefAndPaintIndex(weaponDef, paintIndex);
+  const id = resolveItemIdFromDefAndPaintIndex(
+    weaponDef,
+    paintIndex,
+    weaponOptions
+  );
 
   if (id === undefined) {
     return data({
-      error: "That paint index is not valid for the selected weapon."
+      error: "Failed to resolve a weapon for the selected values."
     });
   }
+
+  const economyItem = CS2Economy.getById(id);
 
   const item: CS2BaseInventoryItem = {
     id,
     nameTag,
     seed,
-    statTrak: statTrak === "on" ? 0 : undefined,
+    statTrak: statTrak === "on" && economyItem.hasStatTrak() ? 0 : undefined,
     wear
   };
 
