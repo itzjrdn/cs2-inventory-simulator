@@ -13,6 +13,7 @@ import {
 } from "@ianlucas/cs2-lib";
 import clsx from "clsx";
 import { useNameItem } from "~/components/hooks/use-name-item";
+import { isCustomSkinContainerId } from "~/utils/custom-skin";
 import { has } from "~/utils/misc";
 import { useTranslate } from "./app-context";
 import { ItemImage } from "./item-image";
@@ -29,6 +30,7 @@ export function InventoryItemTile({
   const translate = useTranslate();
   const nameItem = useNameItem();
   const inventoryItem = item instanceof CS2InventoryItem ? item : undefined;
+  const isCustomSkin = isCustomSkinContainerId(inventoryItem?.containerId);
   const [model, name] = nameItem(item, "inventory-name");
 
   const currDate = getTimestamp();
@@ -105,7 +107,7 @@ export function InventoryItemTile({
       </div>
       <div
         className="h-1 shadow-sm shadow-black/50"
-        style={{ backgroundColor: item.rarity }}
+        style={{ backgroundColor: isCustomSkin ? "#67e8f9" : item.rarity }}
       />
       <div className="font-display mt-1 text-[12px]/3 wrap-break-word text-white drop-shadow-[0_0_1px_rgba(0,0,0,1)]">
         {has(model) && <div className="font-bold">{model}</div>}

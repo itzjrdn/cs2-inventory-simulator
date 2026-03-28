@@ -8,8 +8,25 @@ import { RarityLabel, getRarityItemName } from "~/utils/economy";
 import { useTranslate } from "./app-context";
 import { InventoryItemTooltipInfo } from "./inventory-item-tooltip-info";
 
-export function InventoryItemTooltipRarity({ item }: { item: CS2EconomyItem }) {
+export function InventoryItemTooltipRarity({
+  item,
+  customLabel
+}: {
+  item: CS2EconomyItem;
+  customLabel?: string;
+}) {
   const translate = useTranslate();
+
+  if (customLabel !== undefined) {
+    return (
+      <InventoryItemTooltipInfo
+        style={{ color: "#67e8f9" }}
+        label={translate("InventoryItemRarity")}
+      >
+        {customLabel}
+      </InventoryItemTooltipInfo>
+    );
+  }
 
   const rarityType = item.isPaintable() || item.isC4() ? "Weapon" : "";
   const rarityLabel = RarityLabel[item.rarity];

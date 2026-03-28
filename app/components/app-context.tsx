@@ -144,6 +144,29 @@ export function AppProvider({
   }, [user]);
 
   useEffect(() => {
+    if (user?.inventory === null || user?.inventory === undefined) {
+      return;
+    }
+
+    const parsedInventory = parseInventory(user.inventory);
+    if (parsedInventory === undefined) {
+      return;
+    }
+
+    setInventory(
+      new CS2Inventory({
+        data: parsedInventory,
+        maxItems: rules.inventoryMaxItems,
+        storageUnitMaxItems: rules.inventoryStorageUnitMaxItems
+      })
+    );
+  }, [
+    user?.inventory,
+    rules.inventoryMaxItems,
+    rules.inventoryStorageUnitMaxItems
+  ]);
+
+  useEffect(() => {
     updateEconomyLanguage(translation.items);
     reactSetInventory(
       (inventory) =>

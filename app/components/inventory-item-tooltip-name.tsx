@@ -7,10 +7,26 @@ import { CS2InventoryItem } from "@ianlucas/cs2-lib";
 import { useNameItemString } from "~/components/hooks/use-name-item";
 import { ItemImage } from "./item-image";
 
-export function InventoryItemTooltipName({ item }: { item: CS2InventoryItem }) {
+export function InventoryItemTooltipName({
+  item,
+  collectionNameOverride
+}: {
+  item: CS2InventoryItem;
+  collectionNameOverride?: string;
+}) {
   const nameItemString = useNameItemString();
+  const collectionName = collectionNameOverride ?? item.collectionName;
 
-  if (item.collectionName === undefined) {
+  if (collectionNameOverride !== undefined) {
+    return (
+      <div>
+        <div className="font-bold">{nameItemString(item)}</div>
+        <div>{collectionNameOverride}</div>
+      </div>
+    );
+  }
+
+  if (collectionName === undefined) {
     return <div className="font-bold">{nameItemString(item)}</div>;
   }
 
@@ -19,7 +35,7 @@ export function InventoryItemTooltipName({ item }: { item: CS2InventoryItem }) {
       <ItemImage className="h-10" item={item} type="collection" />
       <div className="flex-1">
         <div className="font-bold">{nameItemString(item)}</div>
-        <div>{item.collectionName}</div>
+        <div>{collectionName}</div>
       </div>
     </div>
   );

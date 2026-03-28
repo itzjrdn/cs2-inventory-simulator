@@ -11,7 +11,10 @@ import {
 } from "@ianlucas/cs2-lib";
 import clsx from "clsx";
 import { ComponentProps } from "react";
-import { decodeCustomSkinContainerId } from "~/utils/custom-skin";
+import {
+  decodeCustomSkinContainerId,
+  getCustomSkinPresentation
+} from "~/utils/custom-skin";
 import { has } from "~/utils/misc";
 import { usePreferences } from "./app-context";
 import { InventoryItemTooltipContents } from "./inventory-item-tooltip-contents";
@@ -34,6 +37,7 @@ export function InventoryItemTooltip({
   const { statsForNerds } = usePreferences();
   const isContainer = item.isContainer();
   const customSkinOverride = decodeCustomSkinContainerId(item.containerId);
+  const customSkinPresentation = getCustomSkinPresentation(item.containerId);
   const containerItem =
     item.containerId !== undefined &&
     customSkinOverride === undefined &&
@@ -54,8 +58,11 @@ export function InventoryItemTooltip({
     item.type === CS2ItemType.Graffiti ? CS2_TEAMS_BOTH : item.teams;
   const hasTeams = teams !== undefined;
 
-  const baseDescription = (item.parent ?? item).desc;
-  const itemDescription = item.parent !== undefined ? item.desc : undefined;
+  const baseDescription =
+    customSkinPresentation?.description ?? (item.parent ?? item).desc;
+  const itemDescription =
+    customSkinPresentation?.flavor ??
+    (item.parent !== undefined ? item.desc : undefined);
 
   return (
     <div
@@ -67,9 +74,17 @@ export function InventoryItemTooltip({
       ref={forwardRef}
       {...props}
     >
-      <InventoryItemTooltipName item={item} />
+      <InventoryItemTooltipName
+        item={item}
+        collectionNameOverride={customSkinPresentation?.collectionName}
+      />
       <div className="mt-2.5 grid grid-cols-[auto_1fr] items-center gap-1 border-y border-neutral-700/70 p-2">
-        <InventoryItemTooltipRarity item={item} />
+        <InventoryItemTooltipRarity
+          item={item}
+          customLabel={
+            customSkinPresentation !== undefined ? "Custom Skin" : undefined
+          }
+        />
         {hasWear && <InventoryItemTooltipExterior wear={wear} />}
         {hasTeams && <InventoryItemTooltipTeams teams={teams} />}
       </div>
