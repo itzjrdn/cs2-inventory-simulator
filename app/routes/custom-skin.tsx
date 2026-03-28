@@ -48,7 +48,10 @@ const customSkinShape = z.object({
 });
 
 function getWeaponOptions() {
-  const options = new Map<number, WeaponOption & { isBase: boolean }>();
+  const options = new Map<
+    number,
+    WeaponOption & { isBase: boolean; isPaintable: boolean }
+  >();
 
   for (const item of CS2Economy.itemsAsArray) {
     if (
@@ -61,19 +64,25 @@ function getWeaponOptions() {
     const def = item.def;
     const current = options.get(def);
     const label = item.name.split(" | ")[0] ?? item.name;
+    const isPaintable = item.isPaintable();
 
-    if (current === undefined || (!current.isBase && item.base === true)) {
+    if (
+      current === undefined ||
+      (!current.isPaintable && isPaintable) ||
+      (current.isPaintable === isPaintable && !current.isBase && item.base === true)
+    ) {
       options.set(def, {
         def,
         id: item.id,
         isBase: item.base === true,
+        isPaintable,
         label
       });
     }
   }
 
   return Array.from(options.values())
-    .map(({ isBase, ...option }) => option)
+    .map(({ isBase, isPaintable, ...option }) => option)
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
@@ -139,9 +148,9 @@ export async function action({ request }: Route.ActionArgs) {
   const item: CS2BaseInventoryItem = {
     id,
     nameTag,
-    seed,
+    seed: economyItem.hasSeed() ? seed : undefined,
     statTrak: statTrak === "on" && economyItem.hasStatTrak() ? 0 : undefined,
-    wear
+    wear: economyItem.hasWear() ? wear : undefined
   };
 
   try {
