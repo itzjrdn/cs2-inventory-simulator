@@ -3,8 +3,50 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { CS2Economy, CS2ItemType } from "@ianlucas/cs2-lib";
+
 const CUSTOM_SKIN_CONTAINER_ID_PREFIX = 900000000;
 const CUSTOM_SKIN_PAINT_INDEX_FACTOR = 100000;
+
+function isWeaponOrKnife(type: string) {
+  return type === CS2ItemType.Weapon || type === CS2ItemType.Melee;
+}
+
+function getWeaponNameFromDef(weaponDef: number) {
+  const weapon =
+    CS2Economy.itemsAsArray.find(
+      (item) =>
+        isWeaponOrKnife(item.type) &&
+        item.def === weaponDef &&
+        item.base === true &&
+        !item.isStub()
+    ) ??
+    CS2Economy.itemsAsArray.find(
+      (item) => isWeaponOrKnife(item.type) && item.def === weaponDef && !item.isStub()
+    );
+
+  if (weapon === undefined) {
+    return undefined;
+  }
+
+  return weapon.name.split("|")[0]?.trim();
+}
+
+function getPaintNameFromIndex(paintIndex: number) {
+  const paintedItem = CS2Economy.itemsAsArray.find(
+    (item) =>
+      isWeaponOrKnife(item.type) &&
+      item.index === paintIndex &&
+      item.name.includes("|")
+  );
+
+  if (paintedItem === undefined) {
+    return `Paint ${paintIndex}`;
+  }
+
+  const parts = paintedItem.name.split("|").map((part) => part.trim());
+  return parts.slice(1).join(" | ") || `Paint ${paintIndex}`;
+}
 
 export function encodeCustomSkinContainerId(
   weaponDef: number,
@@ -36,5 +78,23 @@ export function decodeCustomSkinContainerId(containerId?: number) {
   return {
     paintIndex,
     weaponDef
+  };
+}
+
+export function getCustomSkinDisplayName(containerId?: number) {
+  const metadata = decodeCustomSkinContainerId(containerId);
+  if (metadata === undefined) {
+    return undefined;
+  }
+
+  const model = getWeaponNameFromDef(metadata.weaponDef);
+
+  if (model === undefined) {
+    return undefined;
+  }
+
+  return {
+    model,
+    name: getPaintNameFromIndex(metadata.paintIndex)
   };
 }

@@ -10,6 +10,7 @@ import {
   CS2ItemTypeValues
 } from "@ianlucas/cs2-lib";
 import { useTranslate } from "~/components/app-context";
+import { getCustomSkinDisplayName } from "~/utils/custom-skin";
 import { has } from "~/utils/misc";
 
 const ITEM_TYPES_WITHOUT_NAME: CS2ItemTypeValues[] = [
@@ -46,6 +47,13 @@ export function nameItemFactory(translate: ReturnType<typeof useTranslate>) {
     let [model, ...names] = item.name.split("|").map((s) => s.trim());
     let name = names.join(" | ");
     model = `${quality}${statTrak}${model}`;
+
+    const customSkinDisplay = getCustomSkinDisplayName(inventoryItem?.containerId);
+    if (customSkinDisplay !== undefined) {
+      model = `${quality}${statTrak}${customSkinDisplay.model}`;
+      name = customSkinDisplay.name;
+    }
+
     if (item.isAgent()) {
       [model, name] = name.split(" | ");
     } else if (ITEM_TYPES_WITHOUT_NAME.includes(item.type)) {
