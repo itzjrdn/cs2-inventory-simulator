@@ -100,9 +100,14 @@ function getWeaponOptions() {
 function resolveItemIdFromDefAndPaintIndex(
   weaponDef: number,
   paintIndex: number,
-  weaponOptions: WeaponOption[]
+  weaponOptions: WeaponOption[],
+  attributes: {
+    seed: number;
+    statTrak: "on" | undefined;
+    wear: number;
+  }
 ) {
-  const exactMatch = CS2Economy.itemsAsArray.find(
+  const exactMatches = CS2Economy.itemsAsArray.filter(
     (item) =>
       (item.type === CS2ItemType.Weapon || item.type === CS2ItemType.Melee) &&
       item.def === weaponDef &&
@@ -110,12 +115,8 @@ function resolveItemIdFromDefAndPaintIndex(
       !item.isStub()
   );
 
-  if (exactMatch !== undefined) {
-    return exactMatch.id;
-  }
-
   // For non-existing paint indexes, choose the best non-stock-like skin variant.
-  const fallbackCandidate = CS2Economy.itemsAsArray
+  const fallbackCandidates = CS2Economy.itemsAsArray
     .filter(
       (item) =>
         isWeaponOrKnife(item) &&
@@ -123,7 +124,31 @@ function resolveItemIdFromDefAndPaintIndex(
         item.index !== undefined &&
         !item.isStub()
     )
-    .sort((a, b) => scoreFallbackCandidate(b) - scoreFallbackCandidate(a))[0];
+    .sort((a, b) => scoreFallbackCandidate(b) - scoreFallbackCandidate(a));
+
+  const candidates = [...exactMatches, ...fallbackCandidates];
+
+  const compatibleCandidate = candidates.find((candidate) => {
+    if (attributes.statTrak === "on" && !CS2Economy.safeValidateStatTrak(0, candidate)) {
+      return false;
+    }
+    if (attributes.statTrak === undefined && candidate.statTrakOnly === true) {
+      return false;
+    }
+    if (candidate.hasWear() && !CS2Economy.safeValidateWear(attributes.wear, candidate)) {
+      return false;
+    }
+    if (candidate.hasSeed() && !CS2Economy.safeValidateSeed(attributes.seed, candidate)) {
+      return false;
+    }
+    return true;
+  });
+
+  if (compatibleCandidate !== undefined) {
+    return compatibleCandidate.id;
+  }
+
+  const fallbackCandidate = candidates[0];
 
   if (fallbackCandidate !== undefined) {
     return fallbackCandidate.id;
@@ -161,7 +186,12 @@ export async function action({ request }: Route.ActionArgs) {
   const id = resolveItemIdFromDefAndPaintIndex(
     weaponDef,
     paintIndex,
-    weaponOptions
+    weaponOptions,
+    {
+      seed,
+      statTrak,
+      wear
+    }
   );
 
   if (id === undefined) {
@@ -171,19 +201,29 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const economyItem = CS2Economy.getById(id);
+  const wearMin = economyItem.getMinimumWear();
+  const wearMax = economyItem.getMaximumWear();
+  const seedMin = economyItem.getMinimumSeed();
+  const seedMax = economyItem.getMaximumSeed();
 
   const item: CS2BaseInventoryItem = {
     containerId: encodeCustomSkinContainerId(weaponDef, paintIndex),
     id,
     nameTag,
-    seed: economyItem.hasSeed() ? seed : undefined,
+    seed:
+      economyItem.hasSeed()
+        ? Math.min(seedMax, Math.max(seedMin, seed))
+        : undefined,
     statTrak:
       statTrak === "on" && economyItem.hasStatTrak()
         ? 0
         : economyItem.statTrakOnly === true
           ? 0
           : undefined,
-    wear: economyItem.hasWear() ? wear : undefined
+    wear:
+      economyItem.hasWear()
+        ? Math.min(wearMax, Math.max(wearMin, wear))
+        : undefined
   };
 
   try {
@@ -191,12 +231,19 @@ export async function action({ request }: Route.ActionArgs) {
       rawInventory,
       userId,
       manipulate(inventory) {
+        if (inventory.isFull()) {
+          throw new Error("Inventory is full.");
+        }
         inventory.add(item);
       }
     });
-  } catch {
+  } catch (error) {
+    const reason =
+      error instanceof Error && error.message.length > 0
+        ? error.message
+        : "validation failed";
     return data({
-      error: "Failed to create this skin with the selected attributes."
+      error: `Failed to create this skin with the selected attributes. ${reason}`
     });
   }
 
