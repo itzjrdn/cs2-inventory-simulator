@@ -5,7 +5,6 @@
 
 import { faCaretDown } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { ensure } from "@ianlucas/cs2-lib";
 import { useClickAway } from "@uidotdev/usehooks";
 import clsx from "clsx";
 import { ReactNode, useState } from "react";
@@ -37,7 +36,25 @@ export function Select<T extends { value: string }>({
   const ref = useClickAway<HTMLDivElement>(() => {
     setIsOpen(false);
   });
-  const selected = ensure(options.find((option) => option.value === value));
+  const selected = options.find((option) => option.value === value) ?? options[0];
+
+  if (selected === undefined) {
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          disabled
+          className={clsx(
+            "flex cursor-not-allowed items-center gap-2 rounded-sm bg-black/20 px-2 py-1 opacity-60",
+            className ?? "min-w-63.25"
+          )}
+        >
+          <div className="flex flex-1 items-center gap-2">No options</div>
+          <FontAwesomeIcon icon={faCaretDown} className="h-4" />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
@@ -52,7 +69,11 @@ export function Select<T extends { value: string }>({
             : "rounded-sm",
           className ?? "min-w-63.25"
         )}
-        onClick={() => setIsOpen(true)}
+        onClick={() => {
+          if (options.length > 0) {
+            setIsOpen(true);
+          }
+        }}
       >
         <div className="flex flex-1 items-center gap-2">
           {children(selected)}
