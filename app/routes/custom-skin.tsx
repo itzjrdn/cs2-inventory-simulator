@@ -103,14 +103,9 @@ export async function action({ request }: Route.ActionArgs) {
   const formData = Object.fromEntries(await request.formData());
   const result = customSkinShape.safeParse(formData);
   if (!result.success) {
-    return data(
-      {
-        error: "Invalid custom skin values."
-      },
-      {
-        status: 400
-      }
-    );
+    return data({
+      error: "Invalid custom skin values."
+    });
   }
 
   const weaponOptions = getWeaponOptions();
@@ -123,14 +118,9 @@ export async function action({ request }: Route.ActionArgs) {
   );
 
   if (id === undefined) {
-    return data(
-      {
-        error: "Failed to resolve a weapon for the selected values."
-      },
-      {
-        status: 400
-      }
-    );
+    return data({
+      error: "Failed to resolve a weapon for the selected values."
+    });
   }
 
   const item: CS2BaseInventoryItem = {
