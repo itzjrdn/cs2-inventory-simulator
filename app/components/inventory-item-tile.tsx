@@ -40,8 +40,22 @@ export function InventoryItemTile({
 
   return (
     <div className="w-38.5">
-      <div className="group relative bg-linear-to-b from-neutral-600 to-neutral-400 p-px">
-        <div className="bg-linear-to-b from-neutral-500 to-neutral-300 px-1">
+      <div
+        className={clsx(
+          "group relative p-px",
+          isCustomSkin
+            ? "bg-linear-to-br from-cyan-600/70 via-sky-500/70 to-cyan-300/70"
+            : "bg-linear-to-b from-neutral-600 to-neutral-400"
+        )}
+      >
+        <div
+          className={clsx(
+            "px-1",
+            isCustomSkin
+              ? "bg-linear-to-br from-slate-800 via-slate-700 to-slate-600"
+              : "bg-linear-to-b from-neutral-500 to-neutral-300"
+          )}
+        >
           <ItemImage className="w-36" item={item} />
         </div>
         {isNew && (
