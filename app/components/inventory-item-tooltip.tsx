@@ -11,6 +11,7 @@ import {
 } from "@ianlucas/cs2-lib";
 import clsx from "clsx";
 import { ComponentProps } from "react";
+import { decodeCustomSkinContainerId } from "~/utils/custom-skin";
 import { has } from "~/utils/misc";
 import { usePreferences } from "./app-context";
 import { InventoryItemTooltipContents } from "./inventory-item-tooltip-contents";
@@ -32,8 +33,11 @@ export function InventoryItemTooltip({
 }) {
   const { statsForNerds } = usePreferences();
   const isContainer = item.isContainer();
+  const customSkinOverride = decodeCustomSkinContainerId(item.containerId);
   const containerItem =
-    item.containerId !== undefined
+    item.containerId !== undefined &&
+    customSkinOverride === undefined &&
+    CS2Economy.items.has(item.containerId)
       ? CS2Economy.getById(item.containerId)
       : item;
   const hasContents = containerItem.isContainer();

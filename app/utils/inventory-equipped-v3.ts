@@ -12,6 +12,7 @@ import {
   CS2_MIN_STICKER_WEAR,
   assert
 } from "@ianlucas/cs2-lib";
+import { decodeCustomSkinContainerId } from "./custom-skin";
 
 interface BaseEconItem {
   def: number;
@@ -109,11 +110,14 @@ export async function generate(
         case CS2ItemType.Melee:
           assert(team);
           assert(data.def);
+          const knifeOverride = decodeCustomSkinContainerId(item.containerId);
+          const knifeDef = knifeOverride?.weaponDef ?? data.def;
+          const knifePaint = knifeOverride?.paintIndex ?? (data.index ?? 0);
           knives[team] = {
-            def: data.def,
+            def: knifeDef,
             legacy: false,
             nametag: item.nameTag ?? "",
-            paint: data.index ?? 0,
+            paint: knifePaint,
             seed: item.seed ?? CS2_MIN_SEED,
             stattrak: item.statTrak ?? -1,
             stickers: [],
@@ -133,12 +137,15 @@ export async function generate(
           break;
         case CS2ItemType.Weapon: {
           assert(data.def);
+          const weaponOverride = decodeCustomSkinContainerId(item.containerId);
+          const weaponDef = weaponOverride?.weaponDef ?? data.def;
+          const weaponPaint = weaponOverride?.paintIndex ?? (data.index ?? 0);
           const weapon = team === CS2Team.CT ? ctWeapons : tWeapons;
-          weapon[data.def] = {
-            def: data.def,
+          weapon[weaponDef] = {
+            def: weaponDef,
             legacy: data.legacy ?? false,
             nametag: item.nameTag ?? "",
-            paint: data.index ?? 0,
+            paint: weaponPaint,
             seed: item.seed ?? CS2_MIN_SEED,
             stattrak: item.statTrak ?? -1,
             stickers: item.someStickers().map(([index, sticker]) => ({

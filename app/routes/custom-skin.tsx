@@ -25,6 +25,7 @@ import { SettingsLabel } from "~/components/settings-label";
 import { middleware } from "~/middleware.server";
 import { manipulateUserInventory } from "~/models/user.server";
 import { getMetaTitle } from "~/root-meta";
+import { encodeCustomSkinContainerId } from "~/utils/custom-skin";
 import type { Route } from "./+types/custom-skin";
 
 type WeaponOption = {
@@ -32,6 +33,25 @@ type WeaponOption = {
   id: number;
   label: string;
 };
+
+function isWeaponOrKnife(item: { type: string }) {
+  return item.type === CS2ItemType.Weapon || item.type === CS2ItemType.Melee;
+}
+
+function scoreFallbackCandidate(item: {
+  base: boolean | undefined;
+  index: number | undefined;
+  hasWear: () => boolean;
+  isPaintable: () => boolean;
+}) {
+  // Prefer real skinned variants, then paintable/wearable items, and avoid base stock.
+  return (
+    (item.index !== undefined ? 8 : 0) +
+    (item.isPaintable() ? 4 : 0) +
+    (item.hasWear() ? 2 : 0) +
+    (item.base !== true ? 1 : 0)
+  );
+}
 
 const customSkinShape = z.object({
   weaponDef: z.coerce.number().int().nonnegative(),
@@ -48,41 +68,30 @@ const customSkinShape = z.object({
 });
 
 function getWeaponOptions() {
-  const options = new Map<
-    number,
-    WeaponOption & { isBase: boolean; isPaintable: boolean }
-  >();
+  const options = new Map<number, WeaponOption & { score: number }>();
 
   for (const item of CS2Economy.itemsAsArray) {
-    if (
-      (item.type !== CS2ItemType.Weapon && item.type !== CS2ItemType.Melee) ||
-      item.def === undefined
-    ) {
+    if (!isWeaponOrKnife(item) || item.def === undefined) {
       continue;
     }
 
     const def = item.def;
     const current = options.get(def);
     const label = item.name.split(" | ")[0] ?? item.name;
-    const isPaintable = item.isPaintable();
+    const score = scoreFallbackCandidate(item);
 
-    if (
-      current === undefined ||
-      (!current.isPaintable && isPaintable) ||
-      (current.isPaintable === isPaintable && !current.isBase && item.base === true)
-    ) {
+    if (current === undefined || score > current.score) {
       options.set(def, {
         def,
         id: item.id,
-        isBase: item.base === true,
-        isPaintable,
+        score,
         label
       });
     }
   }
 
   return Array.from(options.values())
-    .map(({ isBase, isPaintable, ...option }) => option)
+    .map(({ score, ...option }) => option)
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
@@ -100,6 +109,20 @@ function resolveItemIdFromDefAndPaintIndex(
 
   if (exactMatch !== undefined) {
     return exactMatch.id;
+  }
+
+  // For non-existing paint indexes, choose the best non-stock-like skin variant.
+  const fallbackCandidate = CS2Economy.itemsAsArray
+    .filter(
+      (item) =>
+        isWeaponOrKnife(item) &&
+        item.def === weaponDef &&
+        item.index !== undefined
+    )
+    .sort((a, b) => scoreFallbackCandidate(b) - scoreFallbackCandidate(a))[0];
+
+  if (fallbackCandidate !== undefined) {
+    return fallbackCandidate.id;
   }
 
   const fallbackWeapon = weaponOptions.find((weapon) => weapon.def === weaponDef);
@@ -146,6 +169,7 @@ export async function action({ request }: Route.ActionArgs) {
   const economyItem = CS2Economy.getById(id);
 
   const item: CS2BaseInventoryItem = {
+    containerId: encodeCustomSkinContainerId(weaponDef, paintIndex),
     id,
     nameTag,
     seed: economyItem.hasSeed() ? seed : undefined,

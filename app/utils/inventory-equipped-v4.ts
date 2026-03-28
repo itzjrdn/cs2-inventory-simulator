@@ -14,6 +14,7 @@ import {
   assert
 } from "@ianlucas/cs2-lib";
 import hashObject from "hash-object";
+import { decodeCustomSkinContainerId } from "./custom-skin";
 
 interface EconItem {
   def?: number;
@@ -104,10 +105,13 @@ export async function generate(
         case CS2ItemType.Melee:
           assert(team);
           assert(data.def);
+          const knifeOverride = decodeCustomSkinContainerId(item.containerId);
+          const knifeDef = knifeOverride?.weaponDef ?? data.def;
+          const knifePaint = knifeOverride?.paintIndex ?? (data.index ?? 0);
           knives[team] = hash({
-            def: data.def,
+            def: knifeDef,
             nametag: item.nameTag ?? "",
-            paint: data.index ?? 0,
+            paint: knifePaint,
             seed: item.seed ?? CS2_MIN_SEED,
             stattrak: item.statTrak ?? -1,
             stickers: [],
@@ -127,11 +131,14 @@ export async function generate(
           break;
         case CS2ItemType.Weapon: {
           assert(data.def);
+          const weaponOverride = decodeCustomSkinContainerId(item.containerId);
+          const weaponDef = weaponOverride?.weaponDef ?? data.def;
+          const weaponPaint = weaponOverride?.paintIndex ?? (data.index ?? 0);
           const weapon = team === CS2Team.CT ? ctWeapons : tWeapons;
-          weapon[data.def] = hash({
-            def: data.def,
+          weapon[weaponDef] = hash({
+            def: weaponDef,
             nametag: item.nameTag ?? "",
-            paint: data.index ?? 0,
+            paint: weaponPaint,
             seed: item.seed ?? CS2_MIN_SEED,
             stattrak: item.statTrak ?? -1,
             stickers: item.someStickers().map(([index, sticker]) => ({
