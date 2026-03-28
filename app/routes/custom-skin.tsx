@@ -43,13 +43,15 @@ function scoreFallbackCandidate(item: {
   index: number | undefined;
   hasWear: () => boolean;
   isPaintable: () => boolean;
+  statTrakOnly: boolean | undefined;
 }) {
   // Prefer real skinned variants, then paintable/wearable items, and avoid base stock.
   return (
     (item.index !== undefined ? 8 : 0) +
     (item.isPaintable() ? 4 : 0) +
     (item.hasWear() ? 2 : 0) +
-    (item.base !== true ? 1 : 0)
+    (item.base !== true ? 1 : 0) +
+    (item.statTrakOnly === true ? -2 : 0)
   );
 }
 
@@ -57,7 +59,7 @@ const customSkinShape = z.object({
   weaponDef: z.coerce.number().int().nonnegative(),
   paintIndex: z.coerce.number().int().min(0),
   wear: z.coerce.number().min(0).max(1),
-  seed: z.coerce.number().int().min(0).max(1000),
+  seed: z.coerce.number().int().min(1).max(1000),
   statTrak: z.union([z.literal("on"), z.undefined()]),
   nameTag: z
     .string()
@@ -71,7 +73,7 @@ function getWeaponOptions() {
   const options = new Map<number, WeaponOption & { score: number }>();
 
   for (const item of CS2Economy.itemsAsArray) {
-    if (!isWeaponOrKnife(item) || item.def === undefined) {
+    if (!isWeaponOrKnife(item) || item.def === undefined || item.isStub()) {
       continue;
     }
 
@@ -104,7 +106,8 @@ function resolveItemIdFromDefAndPaintIndex(
     (item) =>
       (item.type === CS2ItemType.Weapon || item.type === CS2ItemType.Melee) &&
       item.def === weaponDef &&
-      item.index === paintIndex
+      item.index === paintIndex &&
+      !item.isStub()
   );
 
   if (exactMatch !== undefined) {
@@ -117,7 +120,8 @@ function resolveItemIdFromDefAndPaintIndex(
       (item) =>
         isWeaponOrKnife(item) &&
         item.def === weaponDef &&
-        item.index !== undefined
+        item.index !== undefined &&
+        !item.isStub()
     )
     .sort((a, b) => scoreFallbackCandidate(b) - scoreFallbackCandidate(a))[0];
 
@@ -173,7 +177,12 @@ export async function action({ request }: Route.ActionArgs) {
     id,
     nameTag,
     seed: economyItem.hasSeed() ? seed : undefined,
-    statTrak: statTrak === "on" && economyItem.hasStatTrak() ? 0 : undefined,
+    statTrak:
+      statTrak === "on" && economyItem.hasStatTrak()
+        ? 0
+        : economyItem.statTrakOnly === true
+          ? 0
+          : undefined,
     wear: economyItem.hasWear() ? wear : undefined
   };
 
@@ -246,7 +255,7 @@ export default function CustomSkin() {
         <SettingsLabel label="Pattern / Paint Seed">
           <EditorInput
             className="w-30 min-w-30"
-            min={0}
+            min={1}
             max={1000}
             name="seed"
             step="1"
