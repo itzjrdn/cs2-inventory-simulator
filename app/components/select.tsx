@@ -42,6 +42,7 @@ export function Select<T extends { value: string }>({
   return (
     <div className="relative">
       <button
+        type="button"
         className={clsx(
           "flex cursor-default items-center gap-2 bg-black/20 px-2 py-1 hover:bg-black/40 focus:bg-black/40",
           isOpen
@@ -77,6 +78,7 @@ export function Select<T extends { value: string }>({
           {options.map((option) => {
             return (
               <button
+                type="button"
                 key={option.value}
                 className={clsx(
                   "flex w-full cursor-default items-center gap-2 px-2 py-1 transition-all",
