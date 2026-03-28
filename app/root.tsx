@@ -67,14 +67,29 @@ export const links: LinksFunction = () => [
   { rel: "manifest", href: "/app.webmanifest" }
 ];
 
-export function shouldRevalidate({ currentUrl }: ShouldRevalidateFunctionArgs) {
-  if (
+export function shouldRevalidate({
+  currentUrl,
+  formMethod,
+  nextUrl
+}: ShouldRevalidateFunctionArgs) {
+  const isCraftPage =
     currentUrl.pathname === "/craft" ||
-    currentUrl.pathname === "/custom-skin"
-  ) {
-    return false;
+    currentUrl.pathname === "/custom-skin";
+
+  if (!isCraftPage) {
+    return true;
   }
-  return true;
+
+  // Keep craft UI snappy while editing, but refresh app data after mutations
+  // and when leaving the page so server-side inventory changes are reflected.
+  const isMutation =
+    formMethod !== undefined && formMethod.toUpperCase() !== "GET";
+
+  if (isMutation || nextUrl.pathname !== currentUrl.pathname) {
+    return true;
+  }
+
+  return false;
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
