@@ -69,7 +69,6 @@ function getWeaponOptions() {
 function resolveItemIdFromDefAndPaintIndex(
   weaponDef: number,
   paintIndex: number,
-  weaponOptions: WeaponOption[]
 ) {
   const exactMatch = CS2Economy.itemsAsArray.find(
     (item) =>
@@ -78,12 +77,7 @@ function resolveItemIdFromDefAndPaintIndex(
       item.index === paintIndex
   );
 
-  if (exactMatch !== undefined) {
-    return exactMatch.id;
-  }
-
-  const fallbackWeapon = weaponOptions.find((weapon) => weapon.def === weaponDef);
-  return fallbackWeapon?.id;
+  return exactMatch?.id;
 }
 
 export const meta = getMetaTitle();
@@ -108,18 +102,13 @@ export async function action({ request }: Route.ActionArgs) {
     });
   }
 
-  const weaponOptions = getWeaponOptions();
   const { weaponDef, paintIndex, seed, wear, statTrak, nameTag } = result.data;
 
-  const id = resolveItemIdFromDefAndPaintIndex(
-    weaponDef,
-    paintIndex,
-    weaponOptions
-  );
+  const id = resolveItemIdFromDefAndPaintIndex(weaponDef, paintIndex);
 
   if (id === undefined) {
     return data({
-      error: "Failed to resolve a weapon for the selected values."
+      error: "That paint index is not valid for the selected weapon."
     });
   }
 
@@ -131,13 +120,19 @@ export async function action({ request }: Route.ActionArgs) {
     wear
   };
 
-  await manipulateUserInventory({
-    rawInventory,
-    userId,
-    manipulate(inventory) {
-      inventory.add(item);
-    }
-  });
+  try {
+    await manipulateUserInventory({
+      rawInventory,
+      userId,
+      manipulate(inventory) {
+        inventory.add(item);
+      }
+    });
+  } catch {
+    return data({
+      error: "Failed to create this skin with the selected attributes."
+    });
+  }
 
   return redirect("/");
 }
