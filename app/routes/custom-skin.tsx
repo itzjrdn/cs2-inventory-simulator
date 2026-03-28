@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CS2BaseInventoryItem, CS2Economy, CS2ItemType } from "@ianlucas/cs2-lib";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   data,
   Form,
@@ -29,13 +29,50 @@ import { encodeCustomSkinContainerId } from "~/utils/custom-skin";
 import type { Route } from "./+types/custom-skin";
 
 type WeaponOption = {
+  category: CraftCategory;
   def: number;
+  group: string;
   id: number;
   label: string;
 };
 
+type CraftCategory = "gun" | "knife";
+
 function isWeaponOrKnife(item: { type: string }) {
   return item.type === CS2ItemType.Weapon || item.type === CS2ItemType.Melee;
+}
+
+function getCraftCategory(item: { type: string }): CraftCategory {
+  return item.type === CS2ItemType.Melee ? "knife" : "gun";
+}
+
+function getWeaponGroup(item: {
+  type: string;
+  isMachinegun: () => boolean;
+  isPistol: () => boolean;
+  isRifle: () => boolean;
+  isSMG: () => boolean;
+  isSniperRifle: () => boolean;
+}) {
+  if (item.type === CS2ItemType.Melee) {
+    return "Knives";
+  }
+  if (item.isPistol()) {
+    return "Pistols";
+  }
+  if (item.isSMG()) {
+    return "SMGs";
+  }
+  if (item.isRifle()) {
+    return "Rifles";
+  }
+  if (item.isSniperRifle()) {
+    return "Sniper Rifles";
+  }
+  if (item.isMachinegun()) {
+    return "Machineguns";
+  }
+  return "Other Guns";
 }
 
 function scoreFallbackCandidate(item: {
@@ -84,7 +121,9 @@ function getWeaponOptions() {
 
     if (current === undefined || score > current.score) {
       options.set(def, {
+        category: getCraftCategory(item),
         def,
+        group: getWeaponGroup(item),
         id: item.id,
         score,
         label
@@ -94,7 +133,15 @@ function getWeaponOptions() {
 
   return Array.from(options.values())
     .map(({ score, ...option }) => option)
-    .sort((a, b) => a.label.localeCompare(b.label));
+    .sort((a, b) => {
+      if (a.category !== b.category) {
+        return a.category.localeCompare(b.category);
+      }
+      if (a.group !== b.group) {
+        return a.group.localeCompare(b.group);
+      }
+      return a.label.localeCompare(b.label);
+    });
 }
 
 function resolveItemIdFromDefAndPaintIndex(
@@ -255,21 +302,117 @@ export default function CustomSkin() {
   const actionData = useActionData<typeof action>();
   const translate = useTranslate();
   const navigation = useNavigation();
-  const [weaponDef, setWeaponDef] = useState(String(weaponOptions[0]?.def ?? ""));
+  const [category, setCategory] = useState<CraftCategory>("gun");
+  const categoryOptions = useMemo(
+    () => [
+      { label: "Guns", value: "gun" },
+      { label: "Knives", value: "knife" }
+    ],
+    []
+  );
+  const availableCategoryOptions = useMemo(
+    () =>
+      categoryOptions.filter((option) =>
+        weaponOptions.some((weapon) => weapon.category === option.value)
+      ),
+    [categoryOptions, weaponOptions]
+  );
+  const filteredByCategory = useMemo(
+    () => weaponOptions.filter((weapon) => weapon.category === category),
+    [category, weaponOptions]
+  );
+  const groups = useMemo(
+    () => [...new Set(filteredByCategory.map((weapon) => weapon.group))],
+    [filteredByCategory]
+  );
+  const groupOptions = useMemo(
+    () =>
+      groups.length > 0
+        ? groups.map((value) => ({ label: value, value }))
+        : [{ label: "No groups available", value: "" }],
+    [groups]
+  );
+  const [group, setGroup] = useState("");
+  const filteredWeapons = useMemo(
+    () => filteredByCategory.filter((weapon) => weapon.group === group),
+    [filteredByCategory, group]
+  );
+  const weaponSelectOptions = useMemo(
+    () =>
+      filteredWeapons.length > 0
+        ? filteredWeapons.map((weapon) => ({
+            value: String(weapon.def),
+            label: weapon.label
+          }))
+        : [{ label: "No weapons available", value: "" }],
+    [filteredWeapons]
+  );
+  const [weaponDef, setWeaponDef] = useState("");
   const [statTrak, setStatTrak] = useState(false);
+
+  useEffect(() => {
+    if (availableCategoryOptions.length > 0) {
+      const isCurrentCategoryAvailable = availableCategoryOptions.some(
+        (option) => option.value === category
+      );
+      if (!isCurrentCategoryAvailable) {
+        setCategory(availableCategoryOptions[0].value as CraftCategory);
+      }
+    }
+  }, [availableCategoryOptions, category]);
+
+  useEffect(() => {
+    if (groups.length > 0 && !groups.includes(group)) {
+      setGroup(groups[0]);
+    }
+    if (groups.length === 0 && group !== "") {
+      setGroup("");
+    }
+  }, [group, groups]);
+
+  useEffect(() => {
+    if (filteredWeapons.length > 0) {
+      const isCurrentWeaponAvailable = filteredWeapons.some(
+        (weapon) => String(weapon.def) === weaponDef
+      );
+      if (!isCurrentWeaponAvailable) {
+        setWeaponDef(String(filteredWeapons[0].def));
+      }
+      return;
+    }
+
+    if (weaponDef !== "") {
+      setWeaponDef("");
+    }
+  }, [filteredWeapons, weaponDef]);
 
   return (
     <Modal className="w-135">
       <ModalHeader title="Custom Skin Builder" closeTo="/" />
       <Form method="post" className="mt-2 space-y-2 px-2">
+        <SettingsLabel label="Category">
+          <Select
+            value={category}
+            onChange={(value) => setCategory(value as CraftCategory)}
+            options={availableCategoryOptions}
+          >
+            {(option) => option.label}
+          </Select>
+        </SettingsLabel>
+        <SettingsLabel label="Group">
+          <Select
+            value={group}
+            onChange={setGroup}
+            options={groupOptions}
+          >
+            {(option) => option.label}
+          </Select>
+        </SettingsLabel>
         <SettingsLabel label="Weapon">
           <Select
             value={weaponDef}
             onChange={setWeaponDef}
-            options={weaponOptions.map((weapon) => ({
-              value: String(weapon.def),
-              label: weapon.label
-            }))}
+            options={weaponSelectOptions}
           >
             {(option) => option.label}
           </Select>
