@@ -79,7 +79,7 @@ export function ItemImage({
     }
   }, [loaded]);
 
-  if (!loaded) {
+  if (!loaded && !isCustomSkin) {
     return (
       <div
         {...props}
