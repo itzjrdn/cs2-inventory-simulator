@@ -68,7 +68,10 @@ export const links: LinksFunction = () => [
 ];
 
 export function shouldRevalidate({ currentUrl }: ShouldRevalidateFunctionArgs) {
-  if (currentUrl.pathname === "/craft") {
+  if (
+    currentUrl.pathname === "/craft" ||
+    currentUrl.pathname === "/custom-skin"
+  ) {
     return false;
   }
   return true;

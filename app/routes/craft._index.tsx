@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { faArrowDownLong } from "@fortawesome/free-solid-svg-icons";
+import { faArrowDownLong, faPaintBrush } from "@fortawesome/free-solid-svg-icons";
 import { CS2BaseInventoryItem, CS2EconomyItem } from "@ianlucas/cs2-lib";
 import clsx from "clsx";
 import lzstring from "lz-string";
@@ -184,6 +184,12 @@ export default function Craft() {
           <ModalHeader title={translate("CraftSelectHeader")} closeTo="/" />
           <ModalNav
             items={[
+              {
+                icon: faPaintBrush,
+                isActive: false,
+                label: "Custom Skin Builder",
+                onClick: () => navigate("/custom-skin")
+              },
               craftAllowImportInspectLink && {
                 icon: faArrowDownLong,
                 isActive: isImportFromInspectLink,

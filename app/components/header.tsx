@@ -9,6 +9,7 @@ import {
   faBoxesStacked,
   faCog,
   faHammer,
+  faPaintBrush,
   faRightFromBracket,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
@@ -105,6 +106,14 @@ export function Header({
                 label={translate("HeaderCraftLabel")}
                 onClick={closeMenu}
               />
+              {user !== undefined && (
+                <HeaderLink
+                  to="/custom-skin"
+                  icon={faPaintBrush}
+                  label="Custom Skin"
+                  onClick={closeMenu}
+                />
+              )}
               {user === undefined ? (
                 <>
                   {!appHideAuth && (
