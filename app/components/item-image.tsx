@@ -7,6 +7,10 @@ import { CS2EconomyItem, CS2InventoryItem } from "@ianlucas/cs2-lib";
 import clsx from "clsx";
 import { ComponentProps, useEffect, useState } from "react";
 import { isServerContext } from "~/globals";
+import {
+  getCustomSkinDisplayName,
+  isCustomSkinContainerId
+} from "~/utils/custom-skin";
 import { noop } from "~/utils/misc";
 import { FillSpinner } from "./fill-spinner";
 
@@ -35,12 +39,19 @@ export function ItemImage({
         ? item.getCollectionImage()
         : item.getSpecialsImage();
 
+  const inventoryItem = item instanceof CS2InventoryItem ? item : undefined;
+  const isCustomSkin =
+    type === "default" && isCustomSkinContainerId(inventoryItem?.containerId);
+  const customSkinName = isCustomSkin
+    ? getCustomSkinDisplayName(inventoryItem?.containerId)
+    : undefined;
+
   const [loaded, setLoaded] = useState(
     cached.includes(url) || url.includes("steamcommunity")
   );
 
   useEffect(() => {
-    if (!loaded) {
+    if (!loaded && !isCustomSkin) {
       let controller: AbortController | undefined = undefined;
       function fetchImage() {
         controller = new AbortController();
@@ -60,7 +71,7 @@ export function ItemImage({
         controller?.abort();
       };
     }
-  }, [lazy, loaded]);
+  }, [isCustomSkin, lazy, loaded]);
 
   useEffect(() => {
     if (loaded) {
@@ -78,6 +89,31 @@ export function ItemImage({
         )}
       >
         <FillSpinner className="opacity-50" />
+      </div>
+    );
+  }
+
+  if (isCustomSkin) {
+    return (
+      <div
+        {...props}
+        className={clsx(
+          "relative flex aspect-256/192 items-center justify-center overflow-hidden bg-linear-to-br from-cyan-950 via-slate-900 to-cyan-900",
+          className
+        )}
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(103,232,249,0.25),transparent_45%),radial-gradient(circle_at_80%_75%,rgba(14,116,144,0.35),transparent_50%)]" />
+        <div className="relative z-10 px-2 text-center">
+          <div className="font-display text-[9px] tracking-[0.25em] text-cyan-300/90">
+            CUSTOM SKIN
+          </div>
+          <div className="mt-1 text-[10px] font-bold text-white">
+            {customSkinName?.model ?? "Custom Weapon"}
+          </div>
+          <div className="text-[9px] text-cyan-200/90">
+            {customSkinName?.name ?? "Generated Finish"}
+          </div>
+        </div>
       </div>
     );
   }
